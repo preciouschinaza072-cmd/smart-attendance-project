@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>AI Smart Attendance Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="/static/styles.css" />
+  </head>
+  <body>
+    <header>
+      <h1>AI-Powered Smart Attendance Dashboard</h1>
+      <p>Last updated: {{ now }}</p>
+    </header>
+
+    <main>
+      <section class="panel video">
+        <h2>Live Camera Feed</h2>
+        <img src="/video_feed" alt="Video Feed" />
+      </section>
+
+      <section class="panel actions">
+        <h2>Exports</h2>
+        <a href="/export/csv">Download CSV</a>
+        <a href="/export/pdf">Download PDF</a>
+      </section>
+
+      <section class="panel chart">
+        <h2>Daily Attendance Analytics</h2>
+        <canvas id="dailyChart"></canvas>
+      </section>
+
+      <section class="panel table">
+        <h2>Recent Attendance Logs</h2>
+        <table id="attendanceTable">
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Name</th>
+              <th>Timestamp</th>
+              <th>Liveness</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </section>
+    </main>
+
+    <script src="/static/app.js"></script>
+  </body>
+</html>
