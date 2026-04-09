@@ -1,0 +1,50 @@
+body {
+  font-family: Arial, sans-serif;
+  background: #0f172a;
+  color: #e2e8f0;
+  margin: 0;
+}
+
+header {
+  padding: 1rem 1.5rem;
+  background: #1e293b;
+  border-bottom: 1px solid #334155;
+}
+
+main {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+  padding: 1rem;
+}
+
+.panel {
+  background: #111827;
+  border: 1px solid #374151;
+  border-radius: 8px;
+  padding: 1rem;
+}
+
+.video img {
+  width: 100%;
+  border-radius: 6px;
+  border: 1px solid #334155;
+}
+
+a {
+  display: inline-block;
+  margin-right: 0.75rem;
+  color: #93c5fd;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+th,
+td {
+  border-bottom: 1px solid #374151;
+  padding: 0.5rem;
+  text-align: left;
+}
