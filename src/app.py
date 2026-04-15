@@ -1,115 +1,177 @@
 from __future__ import annotations
 
 import io
-from datetime import datetime
+from collections import defaultdict
 
-import cv2
-import face_recognition
-from flask import Flask, Response, jsonify, render_template, send_file
+from flask import Flask, jsonify, redirect, render_template, request, send_file, url_for
 
-from config import (
-    BLINK_EAR_DROP,
-    DB_PATH,
-    EXPORT_DIR,
-    FACE_TOLERANCE,
-    FRAME_SCALE,
-    KNOWN_FACES_DIR,
-    LIVENESS_WINDOW,
-    MOTION_THRESHOLD,
-)
+from config import BLINK_EAR_DROP, DB_PATH, FACE_MATCH_THRESHOLD, FRAME_SKIP
 from database import AttendanceDB
-from liveness import LivenessDetector
-from vision import encode_jpeg, landmarks_for_face, load_known_faces, recognize_face
+from liveness import BlinkLiveness
+from vision import FaceEngine, decode_base64_image
 
 app = Flask(__name__)
 
 db = AttendanceDB(DB_PATH)
 db.init_schema()
+db.seed_demo_data()
 
-known_faces = load_known_faces(KNOWN_FACES_DIR)
-liveness = LivenessDetector(
-    ear_drop_threshold=BLINK_EAR_DROP,
-    motion_threshold=MOTION_THRESHOLD,
-    window=LIVENESS_WINDOW,
-)
-
-
-def generate_camera_stream():
-    camera = cv2.VideoCapture(0)
-    if not camera.isOpened():
-        return
-
-    while True:
-        ok, frame = camera.read()
-        if not ok:
-            break
-
-        small = cv2.resize(frame, (0, 0), fx=FRAME_SCALE, fy=FRAME_SCALE)
-        rgb_small = cv2.cvtColor(small, cv2.COLOR_BGR2RGB)
-
-        locations = face_recognition.face_locations(rgb_small)
-        encodings = face_recognition.face_encodings(rgb_small, locations)
-
-        for location, encoding in zip(locations, encodings):
-            top, right, bottom, left = location
-            name = recognize_face(encoding, known_faces, tolerance=FACE_TOLERANCE) or "Unknown"
-
-            landmarks = landmarks_for_face(rgb_small, location)
-            score = 0.0
-            if landmarks and "left_eye" in landmarks and "right_eye" in landmarks:
-                center = ((left + right) // 2, (top + bottom) // 2)
-                face_key = f"{name}:{left}:{top}"
-                score = liveness.update(face_key, landmarks["left_eye"], landmarks["right_eye"], center)
-
-            live_ok = score >= 0.5
-            if name != "Unknown" and live_ok:
-                db.mark_attendance(name, score)
-
-            # scale back to original resolution
-            inv = int(1 / FRAME_SCALE)
-            top, right, bottom, left = [v * inv for v in (top, right, bottom, left)]
-
-            color = (0, 200, 0) if live_ok and name != "Unknown" else (0, 0, 255)
-            label = f"{name} | live:{score:.2f}" if name != "Unknown" else "Unknown"
-            cv2.rectangle(frame, (left, top), (right, bottom), color, 2)
-            cv2.rectangle(frame, (left, bottom - 28), (right, bottom), color, cv2.FILLED)
-            cv2.putText(frame, label, (left + 5, bottom - 7), cv2.FONT_HERSHEY_SIMPLEX, 0.55, (255, 255, 255), 1)
-
-        payload = encode_jpeg(frame)
-        if not payload:
-            continue
-
-        yield (
-            b"--frame\r\n"
-            b"Content-Type: image/jpeg\r\n\r\n" + payload + b"\r\n"
-        )
-
-    camera.release()
+face_engine = FaceEngine()
+blink_liveness = BlinkLiveness(ear_drop_threshold=BLINK_EAR_DROP)
+frame_counters = defaultdict(int)
 
 
 @app.route("/")
-def dashboard():
-    return render_template("index.html", now=datetime.utcnow().strftime("%Y-%m-%d %H:%M UTC"))
+def index():
+    return render_template("index.html")
 
 
-@app.route("/video_feed")
-def video_feed():
-    return Response(generate_camera_stream(), mimetype="multipart/x-mixed-replace; boundary=frame")
+@app.route("/admin")
+def admin_dashboard():
+    return render_template("admin.html")
+
+
+@app.route("/lecturer")
+def lecturer_dashboard():
+    lecturer_id = int(request.args.get("lecturer_id", "2"))
+    return render_template("lecturer.html", lecturer_id=lecturer_id)
+
+
+@app.route("/student/register")
+def student_register_page():
+    return render_template("student_register.html")
+
+
+@app.route("/student/scan")
+def student_scan_page():
+    return render_template("student_scan.html")
+
+
+@app.route("/api/users", methods=["GET", "POST"])
+def users_api():
+    if request.method == "POST":
+        data = request.get_json(force=True)
+        user_id = db.create_user(data["name"], data["role"])
+        return jsonify({"ok": True, "user_id": user_id})
+
+    role = request.args.get("role")
+    return jsonify(db.list_users(role=role))
+
+
+@app.route("/api/courses", methods=["GET", "POST"])
+def courses_api():
+    if request.method == "POST":
+        data = request.get_json(force=True)
+        course_id = db.create_course(data["name"], int(data["lecturer_id"]))
+        return jsonify({"ok": True, "course_id": course_id})
+
+    lecturer_id = request.args.get("lecturer_id")
+    return jsonify(db.list_courses(lecturer_id=int(lecturer_id) if lecturer_id else None))
+
+
+@app.route("/api/enroll", methods=["POST"])
+def enroll_api():
+    data = request.get_json(force=True)
+    db.enroll_student(int(data["student_id"]), int(data["course_id"]))
+    return jsonify({"ok": True})
+
+
+@app.route("/api/register_face", methods=["POST"])
+def register_face_api():
+    data = request.get_json(force=True)
+    student_id = int(data["student_id"])
+    frame = decode_base64_image(data.get("image", ""))
+    if frame is None:
+        return jsonify({"ok": False, "message": "Invalid image payload"}), 400
+
+    small = frame[::2, ::2]
+    faces = face_engine.detect_faces(small)
+    if not faces:
+        return jsonify({"ok": False, "message": "No face detected"}), 400
+
+    embedding = faces[0]["embedding"]
+    db.save_embedding(student_id, embedding)
+    return jsonify({"ok": True, "message": "Face registered successfully"})
+
+
+@app.route("/api/scan_frame", methods=["POST"])
+def scan_frame_api():
+    data = request.get_json(force=True)
+    student_id = int(data["student_id"])
+    course_id = int(data["course_id"])
+
+    if not db.is_enrolled(student_id, course_id):
+        return jsonify({"ok": False, "status": "blocked", "message": "Student is not enrolled in this course"})
+
+    frame = decode_base64_image(data.get("image", ""))
+    if frame is None:
+        return jsonify({"ok": False, "status": "error", "message": "Invalid image payload"}), 400
+
+    frame_counters[student_id] += 1
+    if frame_counters[student_id] % FRAME_SKIP != 0:
+        return jsonify({"ok": True, "status": "processing", "message": "Hold still..."})
+
+    small = frame[::2, ::2]
+    rgb_small = small[:, :, ::-1]
+
+    liveness = blink_liveness.update(f"student:{student_id}", rgb_small)
+    if not liveness["blinked"]:
+        return jsonify(
+            {
+                "ok": False,
+                "status": "blink_required",
+                "message": liveness["message"],
+                "liveness_score": 0.0,
+            }
+        )
+
+    faces = face_engine.detect_faces(small)
+    if not faces:
+        return jsonify({"ok": False, "status": "no_face", "message": "Face not detected"})
+
+    candidates = db.get_course_student_embeddings(course_id)
+    if not candidates:
+        return jsonify({"ok": False, "status": "no_candidates", "message": "No registered students for course"})
+
+    match = face_engine.best_match(faces[0]["embedding"], candidates, threshold=FACE_MATCH_THRESHOLD)
+    if not match or match.student_id != student_id:
+        return jsonify({"ok": False, "status": "not_matched", "message": "Face not matched"})
+
+    inserted = db.mark_attendance(student_id, course_id, confidence=match.similarity, liveness_score=1.0)
+    return jsonify(
+        {
+            "ok": True,
+            "status": "verified",
+            "message": "Attendance marked" if inserted else "Already marked today",
+            "similarity": round(match.similarity, 4),
+            "liveness_score": 1.0,
+        }
+    )
 
 
 @app.route("/api/attendance")
 def attendance_api():
-    return jsonify(db.fetch_recent(limit=200))
+    course_id = request.args.get("course_id")
+    lecturer_id = request.args.get("lecturer_id")
+    return jsonify(
+        db.fetch_attendance(
+            course_id=int(course_id) if course_id else None,
+            lecturer_id=int(lecturer_id) if lecturer_id else None,
+            limit=300,
+        )
+    )
 
 
 @app.route("/api/stats/daily")
 def daily_stats_api():
-    return jsonify(db.daily_counts())
+    course_id = request.args.get("course_id")
+    return jsonify(db.daily_counts(course_id=int(course_id) if course_id else None))
 
 
 @app.route("/export/csv")
 def export_csv():
-    content = db.rows_as_csv().encode("utf-8")
+    course_id = request.args.get("course_id")
+    content = db.rows_as_csv(course_id=int(course_id) if course_id else None).encode("utf-8")
     return send_file(
         io.BytesIO(content),
         mimetype="text/csv",
@@ -120,21 +182,27 @@ def export_csv():
 
 @app.route("/export/pdf")
 def export_pdf():
-    # Minimal PDF-like export placeholder (plain text in .pdf extension).
-    # Replace with reportlab/weasyprint in production.
     rows = db.rows_as_iter()
     lines = ["Attendance Report", "================="]
     for row in rows:
-        lines.append(f"{row['person_name']} | {row['recognized_at']} | live={row['liveness_score']:.2f}")
+        lines.append(
+            f"{row['student_name']} | {row['course_name']} | {row['recognized_at']} | "
+            f"sim={row['confidence']:.3f}"
+        )
     content = "\n".join(lines).encode("utf-8")
 
-    EXPORT_DIR.mkdir(parents=True, exist_ok=True)
     return send_file(
         io.BytesIO(content),
         mimetype="application/pdf",
         as_attachment=True,
         download_name="attendance_report.pdf",
     )
+
+
+@app.route("/video_feed")
+def legacy_video_feed_redirect():
+    # Backward compatibility with previous UI entry.
+    return redirect(url_for("student_scan_page"))
 
 
 if __name__ == "__main__":

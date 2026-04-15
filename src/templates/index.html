@@ -2,50 +2,31 @@
 <html lang="en">
   <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width,initial-scale=1" />
-    <title>AI Smart Attendance Dashboard</title>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <link rel="stylesheet" href="/static/styles.css" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Biometric Attendance</title>
+    <script src="https://cdn.tailwindcss.com"></script>
   </head>
-  <body>
-    <header>
-      <h1>AI-Powered Smart Attendance Dashboard</h1>
-      <p>Last updated: {{ now }}</p>
-    </header>
+  <body class="bg-slate-950 text-slate-100 min-h-screen">
+    <main class="max-w-5xl mx-auto p-8">
+      <h1 class="text-3xl font-bold mb-2">Modern Biometric Attendance Platform</h1>
+      <p class="text-slate-300 mb-8">Choose your role to continue.</p>
 
-    <main>
-      <section class="panel video">
-        <h2>Live Camera Feed</h2>
-        <img src="/video_feed" alt="Video Feed" />
-      </section>
+      <div class="grid md:grid-cols-3 gap-4">
+        <a href="/admin" class="rounded-xl border border-slate-700 p-6 bg-slate-900 hover:bg-slate-800">
+          <h2 class="text-xl font-semibold">Admin Dashboard</h2>
+          <p class="text-slate-400 mt-2">Manage users, courses, and enrollments.</p>
+        </a>
+        <a href="/lecturer" class="rounded-xl border border-slate-700 p-6 bg-slate-900 hover:bg-slate-800">
+          <h2 class="text-xl font-semibold">Lecturer Dashboard</h2>
+          <p class="text-slate-400 mt-2">View course attendance and reports.</p>
+        </a>
+        <a href="/student/register" class="rounded-xl border border-slate-700 p-6 bg-slate-900 hover:bg-slate-800">
+          <h2 class="text-xl font-semibold">Student Registration</h2>
+          <p class="text-slate-400 mt-2">Capture your face using webcam.</p>
+        </a>
+      </div>
 
-      <section class="panel actions">
-        <h2>Exports</h2>
-        <a href="/export/csv">Download CSV</a>
-        <a href="/export/pdf">Download PDF</a>
-      </section>
-
-      <section class="panel chart">
-        <h2>Daily Attendance Analytics</h2>
-        <canvas id="dailyChart"></canvas>
-      </section>
-
-      <section class="panel table">
-        <h2>Recent Attendance Logs</h2>
-        <table id="attendanceTable">
-          <thead>
-            <tr>
-              <th>ID</th>
-              <th>Name</th>
-              <th>Timestamp</th>
-              <th>Liveness</th>
-            </tr>
-          </thead>
-          <tbody></tbody>
-        </table>
-      </section>
+      <a href="/student/scan" class="inline-block mt-6 text-cyan-300 hover:text-cyan-200">Go to student scan page →</a>
     </main>
-
-    <script src="/static/app.js"></script>
   </body>
 </html>

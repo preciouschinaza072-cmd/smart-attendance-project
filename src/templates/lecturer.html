@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Lecturer Dashboard</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body class="bg-slate-950 text-slate-100">
+  <div class="max-w-6xl mx-auto p-6">
+    <a href="/" class="text-cyan-300">← Home</a>
+    <h1 class="text-2xl font-bold my-4">Lecturer Dashboard</h1>
+
+    <input type="hidden" id="lecturerId" value="{{ lecturer_id }}" />
+
+    <section class="bg-slate-900 border border-slate-700 rounded-lg p-4 mb-4">
+      <h2 class="font-semibold mb-2">Select Course</h2>
+      <select id="courseFilter" class="p-2 rounded bg-slate-800 border border-slate-700"></select>
+      <a id="csvLink" href="/export/csv" class="ml-3 text-cyan-300">Download CSV</a>
+      <a id="pdfLink" href="/export/pdf" class="ml-3 text-cyan-300">Download PDF</a>
+    </section>
+
+    <section class="bg-slate-900 border border-slate-700 rounded-lg p-4 mb-4">
+      <h2 class="font-semibold mb-2">Daily Attendance</h2>
+      <canvas id="dailyChart"></canvas>
+    </section>
+
+    <section class="bg-slate-900 border border-slate-700 rounded-lg p-4">
+      <h2 class="font-semibold mb-2">Attendance Logs</h2>
+      <table class="w-full text-sm">
+        <thead class="text-slate-300 border-b border-slate-700">
+          <tr><th class="text-left py-2">Student</th><th class="text-left">Course</th><th class="text-left">Time</th><th class="text-left">Similarity</th></tr>
+        </thead>
+        <tbody id="attendanceRows"></tbody>
+      </table>
+    </section>
+  </div>
+  <script src="/static/lecturer.js"></script>
+</body>
+</html>
