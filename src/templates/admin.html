@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Admin Dashboard</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-slate-950 text-slate-100">
+  <div class="max-w-6xl mx-auto p-6">
+    <a href="/" class="text-cyan-300">← Home</a>
+    <h1 class="text-2xl font-bold my-4">Admin Dashboard</h1>
+
+    <div class="grid md:grid-cols-3 gap-4">
+      <section class="bg-slate-900 border border-slate-700 rounded-lg p-4">
+        <h2 class="font-semibold mb-3">Create User</h2>
+        <input id="userName" placeholder="Name" class="w-full mb-2 p-2 rounded bg-slate-800 border border-slate-700" />
+        <select id="userRole" class="w-full mb-2 p-2 rounded bg-slate-800 border border-slate-700">
+          <option value="admin">Admin</option>
+          <option value="lecturer">Lecturer</option>
+          <option value="student">Student</option>
+        </select>
+        <button onclick="createUser()" class="w-full bg-cyan-600 hover:bg-cyan-500 p-2 rounded">Create User</button>
+      </section>
+
+      <section class="bg-slate-900 border border-slate-700 rounded-lg p-4">
+        <h2 class="font-semibold mb-3">Create Course</h2>
+        <input id="courseName" placeholder="Course name" class="w-full mb-2 p-2 rounded bg-slate-800 border border-slate-700" />
+        <select id="lecturerSelect" class="w-full mb-2 p-2 rounded bg-slate-800 border border-slate-700"></select>
+        <button onclick="createCourse()" class="w-full bg-cyan-600 hover:bg-cyan-500 p-2 rounded">Create Course</button>
+      </section>
+
+      <section class="bg-slate-900 border border-slate-700 rounded-lg p-4">
+        <h2 class="font-semibold mb-3">Enroll Student</h2>
+        <select id="studentSelect" class="w-full mb-2 p-2 rounded bg-slate-800 border border-slate-700"></select>
+        <select id="courseSelect" class="w-full mb-2 p-2 rounded bg-slate-800 border border-slate-700"></select>
+        <button onclick="enrollStudent()" class="w-full bg-cyan-600 hover:bg-cyan-500 p-2 rounded">Enroll</button>
+      </section>
+    </div>
+
+    <p id="status" class="text-sm text-emerald-300 mt-4"></p>
+  </div>
+  <script src="/static/admin.js"></script>
+</body>
+</html>
